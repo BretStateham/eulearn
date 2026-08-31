@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eulearn live-teaching prototype</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    button, select {
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      font: inherit;
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--cp-border-strong); background: var(--cp-surface-soft); }
+    button.active { color: var(--cp-accent-fg); background: var(--cp-accent); border-color: var(--cp-accent); }
+    button:focus-visible, select:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: 2px; }
+    .prototype-note {
+      position: fixed; left: 12px; bottom: 12px; z-index: 30; max-width: 330px;
+      padding: 8px 12px; border: 1px solid var(--cp-warning); border-radius: 0.625rem;
+      background: var(--cp-panel-strong); color: var(--cp-text-muted); font-size: 12px;
+    }
+    .app { height: 100%; display: grid; }
+    .topbar {
+      min-height: 56px; display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-bottom: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    .brand { font-size: 20px; font-weight: 700; letter-spacing: .03em; margin-right: 10px; }
+    .board-name { font-weight: 600; white-space: nowrap; }
+    .save-state { margin-left: auto; font-size: 13px; color: var(--cp-success); }
+    .tool-button { min-width: 42px; min-height: 40px; padding: 7px 10px; }
+    .tool-button span { display: block; font-size: 11px; color: inherit; }
+    .canvas-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+    .canvas {
+      position: absolute; inset: 0; overflow: hidden; cursor: crosshair;
+      background-color: var(--cp-surface);
+      background-image:
+        linear-gradient(var(--cp-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--cp-border) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .page-guide {
+      position: absolute; left: 16%; top: 10%; width: 68%; height: 78%;
+      border: 2px dashed var(--cp-border-strong); pointer-events: none;
+    }
+    .origin {
+      position: absolute; left: 16%; top: 10%; width: 18px; height: 18px;
+      border-left: 3px solid var(--cp-accent); border-top: 3px solid var(--cp-accent);
+    }
+    .math-card, .graph-card, .note-card, .locked-card {
+      position: absolute; padding: 14px; border: 1px solid var(--cp-border);
+      border-radius: 16px; background: var(--cp-panel-strong);
+      box-shadow: 0 0 2px var(--cp-border), 0 1px 2px var(--cp-border);
+      user-select: none;
+    }
+    .math-card { left: 24%; top: 22%; font-family: Cambria, Georgia, serif; font-size: 28px; }
+    .graph-card { left: 55%; top: 18%; width: 220px; height: 170px; }
+    .note-card { left: 30%; top: 56%; width: 260px; font-size: 18px; }
+    .locked-card { left: 62%; top: 57%; width: 210px; border-style: dashed; }
+    .selected { outline: 3px solid var(--cp-accent); outline-offset: 3px; }
+    .graph-axis-x, .graph-axis-y, .graph-curve { position: absolute; background: var(--cp-border-strong); }
+    .graph-axis-x { left: 12px; right: 12px; top: 50%; height: 1px; }
+    .graph-axis-y { top: 12px; bottom: 12px; left: 50%; width: 1px; }
+    .graph-curve {
+      left: 20px; right: 20px; top: 48%; height: 3px; background: var(--cp-accent);
+      transform: rotate(-18deg); border-radius: 0.625rem;
+    }
+    .zoom {
+      position: absolute; right: 14px; bottom: 14px; display: flex; align-items: center; gap: 6px;
+      padding: 6px; border: 1px solid var(--cp-border); border-radius: 0.625rem;
+      background: var(--cp-panel-strong);
+    }
+    .zoom button { width: 32px; height: 32px; }
+    .zoom-value { min-width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+    .state-panel {
+      position: fixed; top: 68px; right: 12px; z-index: 20; width: 250px; max-height: 42vh;
+      padding: 12px; overflow: auto; border: 1px solid var(--cp-border); border-radius: 16px;
+      background: var(--cp-panel-strong); box-shadow: var(--cp-shadow);
+    }
+    .state-panel h2 { margin: 0 0 8px; font-size: 13px; }
+    .state-panel pre {
+      margin: 0; white-space: pre-wrap; font: 11px/1.4 Consolas, "Courier New", Courier, monospace;
+      color: var(--cp-text-muted);
+    }
+    .state-toggle {
+      position: fixed; right: 12px; top: 12px; z-index: 40; padding: 7px 10px;
+    }
+    .selection-inspector {
+      position: absolute; z-index: 11; right: 0; top: 0; bottom: 0; width: 280px;
+      padding: 18px; border-left: 3px solid var(--cp-accent); background: var(--cp-panel-strong);
+      box-shadow: var(--cp-shadow);
+    }
+    .selection-inspector h2 { margin: 0 0 8px; color: var(--cp-accent); font-size: 13px; }
+    .selection-inspector h3 { margin: 0 0 20px; }
+    .selection-inspector button { display: block; width: 100%; margin: 8px 0; padding: 10px; text-align: left; }
+    .selection-ribbon-label {
+      align-self: stretch; display: flex; align-items: center; padding: 0 10px;
+      border: 3px solid var(--cp-accent); border-radius: 0.625rem; color: var(--cp-accent);
+      font-size: 11px; font-weight: 800;
+    }
+    .switcher {
+      position: fixed; z-index: 50; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px; padding: 8px;
+      border: 2px solid var(--cp-border-strong); border-radius: 0.625rem;
+      background: var(--cp-panel-strong); box-shadow: var(--cp-shadow);
+    }
+    .switcher button { width: 38px; height: 34px; }
+    .switcher strong { min-width: 190px; text-align: center; font-size: 13px; }
+    .shortcut-hint { color: var(--cp-text-muted); font-size: 11px; }
+
+    /* Round 2 variants compare ribbon density with the same selection-only context dock. */
+    .variant-a { grid-template-rows: auto 1fr; }
+    .variant-a .topbar { flex-wrap: nowrap; }
+    .variant-a .command-group { display: flex; gap: 4px; padding-right: 8px; border-right: 1px solid var(--cp-border); }
+
+    .variant-b { grid-template-rows: auto 1fr; }
+    .variant-b .topbar { flex-wrap: nowrap; }
+    .variant-b .command-group { display: flex; gap: 4px; padding-right: 8px; border-right: 1px solid var(--cp-border); }
+    .variant-b .ribbon-row {
+      display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px;
+      border-bottom: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    .rail {
+      display: flex; flex-direction: column; gap: 6px; padding: 8px;
+      border-right: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    .rail button { min-height: 52px; }
+    .inspector {
+      padding: 14px; border-left: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    .inspector h2 { margin: 0 0 16px; font-size: 16px; }
+    .property { margin-bottom: 18px; }
+    .property label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--cp-text-muted); }
+    .property button, .property select { width: 100%; padding: 9px; }
+
+    .variant-c { grid-template-rows: auto 1fr; }
+    .variant-c .topbar { flex-wrap: nowrap; }
+    .variant-c .ribbon-tools { display: flex; gap: 4px; overflow: hidden; max-width: 0; opacity: 0; transition: max-width .2s, opacity .2s; }
+    .variant-c.ribbon-open .ribbon-tools { max-width: 720px; opacity: 1; }
+    .context-dock {
+      position: absolute; left: 24%; top: calc(22% + 62px); z-index: 10;
+      display: flex; align-items: center; gap: 6px; padding: 24px 7px 7px;
+      border: 3px solid var(--cp-accent); border-radius: 16px;
+      background: var(--cp-panel-strong); box-shadow: var(--cp-shadow);
+    }
+    .context-dock::before {
+      content: "FLOATING SELECTION TOOLBAR";
+      position: absolute; left: 8px; top: 5px; color: var(--cp-accent);
+      font-size: 10px; font-weight: 800; letter-spacing: .06em;
+    }
+    .context-dock button { min-width: 36px; height: 36px; }
+    .quick-palette {
+      position: absolute; left: 18px; top: 50%; z-index: 10; transform: translateY(-50%);
+      display: grid; gap: 7px; padding: 7px; border: 1px solid var(--cp-border);
+      border-radius: 16px; background: var(--cp-panel-strong);
+    }
+    .quick-palette button { width: 42px; height: 42px; }
+    @media (max-width: 900px) {
+      .state-panel { display: none; }
+      .variant-b { grid-template-columns: 68px 1fr; }
+      .variant-b .inspector { display: none; }
+      .math-card { left: 18%; }
+      .graph-card { left: 52%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Throwaway prototype: three live-teaching UI variants, switchable via ?variant=. -->
+  <div id="root"></div>
+  <script>
+    const variants = {
+      A: "Floating selection toolbar",
+      B: "Selection commands in ribbon",
+      C: "Right-side selection panel"
+    };
+    const state = {
+      variant: "A",
+      tool: "Pen",
+      selection: "Quadratic formula",
+      selectedLocked: false,
+      dockMode: "selection-only",
+      inkRecognition: true,
+      pageGuides: true,
+      origin: true,
+      protectedContent: true,
+      zoom: 100,
+      save: "Saved",
+      lastAction: "Prototype opened",
+      board: "260828  0846 - Untitled Board"
+    };
+
+    const tools = [
+      ["Pen", "✎"], ["Select", "↖"], ["Eraser", "⌫"], ["Text", "T"],
+      ["Math", "∑"], ["Graph", "⌁"], ["Geometry", "△"], ["Insert", "+"]
+    ];
+
+    function button(tool, icon, compact = false) {
+      return `<button class="tool-button ${state.tool === tool ? "active" : ""}" data-tool="${tool}"
+        aria-label="${tool}" title="${tool}">${icon}${compact ? "" : `<span>${tool}</span>`}</button>`;
+    }
+
+    function topbar(compact = false) {
+      return `<header class="topbar">
+        <div class="brand">eulearn</div>
+        <div class="board-name">${state.board}</div>
+        ${compact ? tools.slice(0, 6).map(([t, i]) => button(t, i, true)).join("") : ""}
+        <button class="tool-button" data-action="undo" title="Undo">↶<span>Undo</span></button>
+        <button class="tool-button" data-action="redo" title="Redo">↷<span>Redo</span></button>
+        <div class="save-state">● ${state.save}</div>
+      </header>`;
+    }
+
+    function canvas(extra = "") {
+      return `<main class="canvas-wrap">
+        <div class="canvas" id="board-canvas" aria-label="Interactive prototype Board">
+          ${extra}
+          <div class="page-guide" ${state.pageGuides ? "" : "hidden"}></div>
+          <div class="origin" ${state.origin ? "" : "hidden"} title="Board Origin"></div>
+          <div class="math-card selected" data-object="Quadratic formula">x = (−b ± √(b² − 4ac)) / 2a</div>
+          <div class="graph-card" data-object="Graph of y equals x squared">
+            <div class="graph-axis-x"></div><div class="graph-axis-y"></div><div class="graph-curve"></div>
+          </div>
+          <div class="note-card" data-object="Lesson prompt"><strong>Why are there two solutions?</strong><br>Compare the graph and formula.</div>
+          <div class="locked-card" data-object="Protected template content">🔒 Unit 3 · Quadratics<br><small>Protected template content</small></div>
+          <div class="zoom">
+            <button data-action="zoom-out" aria-label="Zoom out">−</button>
+            <div class="zoom-value">${state.zoom}%</div>
+            <button data-action="zoom-in" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+      </main>`;
+    }
+
+    function selectionDock() {
+      if (state.selection === "Nothing selected") return "";
+      return `<div class="context-dock" aria-label="Selection tools">
+        <strong>Selected: ${state.selection}</strong>
+        <button data-action="duplicate" title="Duplicate">⧉</button>
+        <button data-action="protect" title="Lock or unlock">${state.selectedLocked ? "🔓" : "🔒"}</button>
+        <button data-action="delete" title="Delete">⌫</button>
+      </div>`;
+    }
+
+    function variantA() {
+      return `<div class="app variant-a">
+        <nav class="topbar" aria-label="Teaching tools">
+          <div class="brand">eulearn</div>
+          <div class="board-name">${state.board}</div>
+          <div class="command-group">${tools.slice(0, 4).map(([t, i]) => button(t, i)).join("")}</div>
+          <div class="command-group">${tools.slice(4).map(([t, i]) => button(t, i)).join("")}</div>
+          <div class="command-group">
+            <button class="tool-button ${state.inkRecognition ? "active" : ""}" data-action="recognition">◇<span>Recognize</span></button>
+            <button class="tool-button" data-action="guides">▦<span>Guides</span></button>
+            <button class="tool-button" data-action="protect">🔒<span>${state.selectedLocked ? "Unlock" : "Lock"}</span></button>
+          </div>
+          <div class="save-state">● ${state.save}</div>
+        </nav>
+        ${canvas(selectionDock())}
+      </div>`;
+    }
+
+    function variantB() {
+      return `<div class="app variant-b">
+        <nav class="topbar" aria-label="Teaching tools">
+          <div class="brand">eulearn</div><div class="board-name">${state.board}</div>
+          ${tools.map(([t, i]) => button(t, i)).join("")}
+          ${state.selection === "Nothing selected" ? "" : `
+            <div class="selection-ribbon-label">SELECTION COMMANDS</div>
+            <button class="tool-button" data-action="duplicate">⧉<span>Duplicate</span></button>
+            <button class="tool-button" data-action="protect">🔒<span>${state.selectedLocked ? "Unlock" : "Lock"}</span></button>
+            <button class="tool-button" data-action="delete">⌫<span>Delete</span></button>`}
+          <div class="save-state">● ${state.save}</div>
+        </nav>
+        ${canvas()}
+      </div>`;
+    }
+
+    function variantC() {
+      const inspector = state.selection === "Nothing selected" ? "" : `<aside class="selection-inspector">
+        <h2>RIGHT-SIDE SELECTION PANEL</h2>
+        <h3>${state.selection}</h3>
+        <button data-action="duplicate">⧉ Duplicate</button>
+        <button data-action="protect">🔒 ${state.selectedLocked ? "Unlock" : "Lock"}</button>
+        <button data-action="delete">⌫ Delete</button>
+      </aside>`;
+      return `<div class="app variant-c">
+        <nav class="topbar" aria-label="Teaching tools">
+          <div class="brand">eulearn</div><div class="board-name">${state.board}</div>
+          ${tools.map(([t, i]) => button(t, i)).join("")}
+          <button class="tool-button ${state.inkRecognition ? "active" : ""}" data-action="recognition">◇<span>Recognize</span></button>
+          <button class="tool-button" data-action="guides">▦<span>Guides</span></button>
+          <div class="save-state">● ${state.save}</div>
+        </nav>
+        ${canvas(inspector)}
+      </div>`;
+    }
+
+    function render() {
+      const requested = new URLSearchParams(location.search).get("variant");
+      state.variant = variants[requested] ? requested : state.variant;
+      const variantHtml = state.variant === "A" ? variantA() : state.variant === "B" ? variantB() : variantC();
+      document.getElementById("root").innerHTML = variantHtml + `
+        <button class="state-toggle" data-action="state" aria-label="Toggle prototype state">State</button>
+        <aside class="state-panel" id="state-panel"><h2>Full prototype state</h2><pre>${escapeHtml(JSON.stringify(state, null, 2))}</pre></aside>
+        <div class="prototype-note"><strong>Throwaway prototype.</strong> Click tools, objects, zoom, guides, lock, recognition, and insert controls. <span class="shortcut-hint">Use ←/→ to compare variants.</span></div>
+        <nav class="switcher" aria-label="Prototype variant switcher">
+          <button data-action="previous" aria-label="Previous variant">←</button>
+          <strong>${state.variant} · ${variants[state.variant]}</strong>
+          <button data-action="next" aria-label="Next variant">→</button>
+        </nav>`;
+      bind();
+    }
+
+    function escapeHtml(value) {
+      return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    }
+
+    function cycle(direction) {
+      const keys = Object.keys(variants);
+      const index = keys.indexOf(state.variant);
+      state.variant = keys[(index + direction + keys.length) % keys.length];
+      const url = new URL(location.href);
+      url.searchParams.set("variant", state.variant);
+      history.replaceState({}, "", url);
+      state.lastAction = `Switched to variant ${state.variant}`;
+      render();
+    }
+
+    function act(action) {
+      if (action === "previous") return cycle(-1);
+      if (action === "next") return cycle(1);
+      if (action === "zoom-in") state.zoom = Math.min(6400, state.zoom * 2);
+      if (action === "zoom-out") state.zoom = Math.max(1, Math.round(state.zoom / 2));
+      if (action === "recognition") state.inkRecognition = !state.inkRecognition;
+      if (action === "guides") state.pageGuides = !state.pageGuides;
+      if (action === "protect") state.selectedLocked = !state.selectedLocked;
+      if (action === "ribbon") state.ribbonOpen = !state.ribbonOpen;
+      if (action === "insert") state.selection = "Inserted template group";
+      if (action === "duplicate") state.selection = `${state.selection} copy`;
+      if (action === "delete") state.selection = "Nothing selected";
+      if (action === "undo") state.lastAction = "Undo requested";
+      else if (action === "redo") state.lastAction = "Redo requested";
+      else if (action !== "state") state.lastAction = action;
+      if (action === "state") {
+        document.getElementById("state-panel").hidden = !document.getElementById("state-panel").hidden;
+        return;
+      }
+      render();
+    }
+
+    function bind() {
+      document.querySelectorAll("[data-tool]").forEach(el => el.addEventListener("click", () => {
+        state.tool = el.dataset.tool;
+        state.lastAction = `Selected ${state.tool} tool`;
+        render();
+      }));
+      document.querySelectorAll("[data-action]").forEach(el => el.addEventListener("click", () => act(el.dataset.action)));
+      document.querySelectorAll("[data-object]").forEach(el => el.addEventListener("click", event => {
+        event.stopPropagation();
+        state.selection = el.dataset.object;
+        state.selectedLocked = state.selection === "Protected template content";
+        state.lastAction = `Selected ${state.selection}`;
+        render();
+      }));
+      document.getElementById("board-canvas").addEventListener("click", () => {
+        state.selection = "Nothing selected";
+        state.lastAction = `${state.tool} used on Board`;
+        render();
+      });
+    }
+
+    window.addEventListener("keydown", event => {
+      const tag = event.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) return;
+      if (event.key === "ArrowLeft") cycle(-1);
+      if (event.key === "ArrowRight") cycle(1);
+    });
+    render();
+  </script>
+</body>
+</html>
