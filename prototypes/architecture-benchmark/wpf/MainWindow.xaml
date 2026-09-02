@@ -1,0 +1,138 @@
+<Window x:Class="Eulearn.ThrowawayArchitectureBenchmark.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Eulearn.ThrowawayArchitectureBenchmark"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+        Title="THROWAWAY - Eulearn WPF Architecture Probe"
+        Width="1380"
+        Height="860"
+        MinWidth="1000"
+        MinHeight="650"
+        Background="#FFF3F5F7">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="330"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="14">
+                <TextBlock FontSize="22" FontWeight="Bold" Text="WPF diagnostic probe"/>
+                <TextBlock Margin="0,2,0,12"
+                           Foreground="#FF9B2226"
+                           FontWeight="SemiBold"
+                           Text="THROWAWAY - not production code"/>
+
+                <GroupBox Header="Capacity scenarios" Margin="0,0,0,10">
+                    <StackPanel Margin="8">
+                        <Button Click="RunOnePercent_Click"
+                                Content="Run 1% (0.01x)"
+                                automation:AutomationProperties.Name="Run one percent capacity scenario"/>
+                        <Button Click="RunOneHundredPercent_Click"
+                                Content="Run 100% (1x)"
+                                automation:AutomationProperties.Name="Run one hundred percent capacity scenario"/>
+                        <Button Click="RunSixThousandFourHundredPercent_Click"
+                                Content="Run 6400% (64x)"
+                                automation:AutomationProperties.Name="Run six thousand four hundred percent capacity scenario"/>
+                        <Button Click="RunAll_Click"
+                                FontWeight="Bold"
+                                Content="Run all capacity scenarios"
+                                automation:AutomationProperties.Name="Run all capacity scenarios"/>
+                        <Button Click="ClearResults_Click"
+                                Content="Clear results"
+                                automation:AutomationProperties.Name="Clear benchmark results"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Semantic selection" Margin="0,0,0,10">
+                    <StackPanel Margin="8">
+                        <Button Click="SelectMath_Click"
+                                Content="Select Math"
+                                automation:AutomationProperties.Name="Math semantic object"
+                                automation:AutomationProperties.HelpText="Selects the representative Math object on the canvas"/>
+                        <Button Click="SelectGraph_Click"
+                                Content="Select Graph"
+                                automation:AutomationProperties.Name="Graph semantic object"
+                                automation:AutomationProperties.HelpText="Selects the representative Graph object on the canvas"/>
+                        <Button Click="SelectLockedGroup_Click"
+                                Content="Select locked group"
+                                automation:AutomationProperties.Name="Locked group semantic object"
+                                automation:AutomationProperties.HelpText="Selects, but does not edit, the locked representative group"
+                                automation:AutomationProperties.ItemStatus="Locked"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Visible state" Margin="0,0,0,10">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="{Binding Text, ElementName=ZoomValue, StringFormat=Zoom: {0}}"/>
+                        <TextBlock Text="{Binding Text, ElementName=SelectedValue, StringFormat=Selected: {0}}"/>
+                        <TextBlock x:Name="ZoomValue" Visibility="Collapsed" Text="100%"/>
+                        <TextBlock x:Name="SelectedValue" Visibility="Collapsed" Text="Math"/>
+                        <TextBlock x:Name="StateText"
+                                   Margin="0,5,0,0"
+                                   TextWrapping="Wrap"
+                                   Text="Ready: 10,000 vectors; 100,000 synthetic ink points."/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Ink / pointer input">
+                    <StackPanel Margin="8">
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="Draw with pen or mouse. WPF InkCanvas uses stylus pressure when the device supplies it. Wheel zooms; right-drag pans."/>
+                        <TextBlock x:Name="InputText"
+                                   Margin="0,7,0,0"
+                                   TextWrapping="Wrap"
+                                   Text="No input yet."
+                                   automation:AutomationProperties.LiveSetting="Polite"/>
+                        <Button Click="ClearInk_Click"
+                                Content="Clear captured ink"
+                                automation:AutomationProperties.Name="Clear captured InkCanvas strokes"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Column="1" Margin="0,14,14,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="220"/>
+            </Grid.RowDefinitions>
+
+            <Border BorderBrush="#FF657786" BorderThickness="1" Background="White">
+                <Grid>
+                    <local:BenchmarkSceneControl x:Name="Scene"/>
+                    <InkCanvas x:Name="InkSurface"
+                               Background="Transparent"
+                               EditingMode="Ink"
+                               StrokeCollected="InkSurface_StrokeCollected"
+                               PreviewMouseWheel="InkSurface_PreviewMouseWheel"
+                               PreviewMouseRightButtonDown="InkSurface_PreviewMouseRightButtonDown"
+                               PreviewMouseRightButtonUp="InkSurface_PreviewMouseRightButtonUp"
+                               PreviewMouseMove="InkSurface_PreviewMouseMove"
+                               StylusMove="InkSurface_StylusMove"
+                               automation:AutomationProperties.Name="Pressure-sensitive benchmark ink canvas"
+                               automation:AutomationProperties.HelpText="Draw with pen or mouse; wheel to zoom and right-drag to pan"/>
+                </Grid>
+            </Border>
+
+            <GroupBox Grid.Row="1" Header="Measured capacity results" Margin="0,10,0,0">
+                <DataGrid x:Name="ResultsGrid"
+                          ItemsSource="{Binding Results}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          automation:AutomationProperties.Name="Capacity benchmark timing and memory results">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Scale" Binding="{Binding Scale}" Width="75"/>
+                        <DataGridTextColumn Header="Vectors" Binding="{Binding VectorObjects, StringFormat=N0}" Width="90"/>
+                        <DataGridTextColumn Header="Ink points" Binding="{Binding InkPoints, StringFormat=N0}" Width="100"/>
+                        <DataGridTextColumn Header="Render ms" Binding="{Binding RenderMilliseconds, StringFormat=F2}" Width="90"/>
+                        <DataGridTextColumn Header="Managed MB" Binding="{Binding ManagedMegabytes, StringFormat=F2}" Width="105"/>
+                        <DataGridTextColumn Header="Private MB" Binding="{Binding PrivateMegabytes, StringFormat=F2}" Width="100"/>
+                        <DataGridTextColumn Header="Result" Binding="{Binding Result}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
+        </Grid>
+    </Grid>
+</Window>

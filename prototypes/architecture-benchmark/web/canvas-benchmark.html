@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eulearn Chromium canvas benchmark probe</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; }
+    body {
+      display: grid; grid-template: auto 1fr / 1fr 340px; overflow: hidden;
+      background: var(--cp-bg); color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    header {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border-bottom: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    header strong { margin-right: auto; }
+    button {
+      min-height: 38px; padding: 7px 11px; border: 1px solid var(--cp-border);
+      border-radius: 0.625rem; background: var(--cp-surface); color: var(--cp-text); cursor: pointer;
+    }
+    button:hover { border-color: var(--cp-border-strong); background: var(--cp-surface-soft); }
+    canvas { width: 100%; height: 100%; background: var(--cp-surface); touch-action: none; cursor: crosshair; }
+    aside { overflow: auto; padding: 16px; border-left: 1px solid var(--cp-border); background: var(--cp-bg-elevated); }
+    h1 { margin: 0; font-size: 18px; }
+    h2 { margin: 18px 0 8px; font-size: 14px; }
+    pre {
+      white-space: pre-wrap; padding: 10px; border: 1px solid var(--cp-border); border-radius: 0.625rem;
+      background: var(--cp-surface); font: 11px/1.45 Consolas, "Courier New", Courier, monospace;
+    }
+    .warning { color: var(--cp-warning); }
+    .semantic-proxies { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PROTOTYPE · Chromium canvas benchmark</h1>
+    <strong id="status">Ready</strong>
+    <button data-zoom="0.01">1%</button>
+    <button data-zoom="1">100%</button>
+    <button data-zoom="64">6400%</button>
+    <button id="run">Run all</button>
+    <button id="clear">Clear ink</button>
+  </header>
+  <canvas id="board" aria-label="Benchmark Board canvas"></canvas>
+  <aside>
+    <div class="warning">Diagnostic only. Render timing is not physical pen-to-photon latency.</div>
+    <h2>Environment</h2><pre id="environment"></pre>
+    <h2>Results</h2><pre id="results">No run yet.</pre>
+    <h2>Pointer input</h2><pre id="pointer">Draw on the canvas with pen, mouse, or touch.</pre>
+  </aside>
+  <section class="semantic-proxies" aria-label="Board objects">
+    <button aria-label="Math object: quadratic formula">Quadratic formula</button>
+    <button aria-label="Graph object: Cartesian y equals x squared, viewport negative ten to ten">Graph</button>
+    <button aria-label="Locked group: lesson heading and directions" aria-disabled="true">Locked group</button>
+  </section>
+  <script>
+    const canvas = document.getElementById("board");
+    const context = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const results = document.getElementById("results");
+    const status = document.getElementById("status");
+    const pointer = document.getElementById("pointer");
+    const scene = { zoom: 1, objects: [], points: [], ink: [], runs: [] };
+    let drawing = false;
+    let inkPresenter = null;
+
+    function resize() {
+      const ratio = devicePixelRatio || 1;
+      canvas.width = Math.floor(canvas.clientWidth * ratio);
+      canvas.height = Math.floor(canvas.clientHeight * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      draw();
+    }
+
+    function buildScene() {
+      scene.objects = Array.from({ length: 10000 }, (_, index) => ({
+        x: (index % 100) * 42,
+        y: Math.floor(index / 100) * 32,
+        w: 30 + (index % 5),
+        h: 20 + (index % 7)
+      }));
+      scene.points = Array.from({ length: 100000 }, (_, index) => ({
+        x: index * 0.28,
+        y: 1800 + Math.sin(index / 90) * 220
+      }));
+    }
+
+    function draw(offset = 0) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      context.save();
+      context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--cp-surface");
+      context.fillRect(0, 0, width, height);
+      context.translate(-offset, 0);
+      context.scale(scene.zoom, scene.zoom);
+      const styles = getComputedStyle(document.documentElement);
+      context.strokeStyle = styles.getPropertyValue("--cp-border-strong");
+      context.lineWidth = Math.max(0.2, 1 / scene.zoom);
+      for (const item of scene.objects) context.strokeRect(item.x, item.y, item.w, item.h);
+      context.strokeStyle = styles.getPropertyValue("--cp-accent");
+      context.lineWidth = Math.max(0.5, 2 / scene.zoom);
+      context.beginPath();
+      for (let index = 0; index < scene.points.length; index++) {
+        const item = scene.points[index];
+        if (index === 0) context.moveTo(item.x, item.y);
+        else context.lineTo(item.x, item.y);
+      }
+      context.stroke();
+      for (const stroke of scene.ink) {
+        context.beginPath();
+        stroke.forEach((item, index) => index ? context.lineTo(item.x, item.y) : context.moveTo(item.x, item.y));
+        context.stroke();
+      }
+      context.restore();
+    }
+
+    async function benchmarkZoom(zoom) {
+      scene.zoom = zoom;
+      const samples = [];
+      for (let frame = 0; frame < 30; frame++) {
+        const start = performance.now();
+        draw(frame * 3);
+        samples.push(performance.now() - start);
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      samples.sort((a, b) => a - b);
+      return {
+        zoom: `${zoom * 100}%`,
+        medianDrawMs: Number(samples[Math.floor(samples.length / 2)].toFixed(2)),
+        p95DrawMs: Number(samples[Math.floor(samples.length * 0.95)].toFixed(2))
+      };
+    }
+
+    async function run() {
+      status.textContent = "Running...";
+      scene.runs = [];
+      for (const zoom of [0.01, 1, 64]) scene.runs.push(await benchmarkZoom(zoom));
+      scene.zoom = 1;
+      draw();
+      status.textContent = "Complete";
+      results.textContent = JSON.stringify({
+        objectCount: scene.objects.length,
+        inkPointCount: scene.points.length,
+        runs: scene.runs,
+        heapBytes: performance.memory?.usedJSHeapSize ?? "not exposed",
+        delegatedInkApi: "ink" in navigator
+      }, null, 2);
+      document.body.dataset.benchmark = "complete";
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      drawing = true;
+      canvas.setPointerCapture(event.pointerId);
+      scene.ink.push([{ x: event.offsetX / scene.zoom, y: event.offsetY / scene.zoom }]);
+      pointer.textContent = JSON.stringify({
+        pointerType: event.pointerType, pressure: event.pressure, tiltX: event.tiltX, tiltY: event.tiltY
+      }, null, 2);
+      if (inkPresenter) {
+        inkPresenter.updateInkTrailStartPoint(event, { color: getComputedStyle(document.documentElement).getPropertyValue("--cp-accent") });
+      }
+    });
+    canvas.addEventListener("pointermove", event => {
+      if (!drawing) return;
+      for (const sample of event.getCoalescedEvents?.() ?? [event]) {
+        scene.ink.at(-1).push({ x: sample.offsetX / scene.zoom, y: sample.offsetY / scene.zoom });
+      }
+      draw();
+    });
+    canvas.addEventListener("pointerup", () => { drawing = false; });
+    document.querySelectorAll("[data-zoom]").forEach(button => button.onclick = () => {
+      scene.zoom = Number(button.dataset.zoom); draw(); status.textContent = `Zoom ${button.textContent}`;
+    });
+    document.getElementById("run").onclick = run;
+    document.getElementById("clear").onclick = () => { scene.ink = []; draw(); };
+    document.getElementById("environment").textContent = JSON.stringify({
+      userAgent: navigator.userAgent,
+      devicePixelRatio,
+      delegatedInkApi: "ink" in navigator,
+      pointerEvents: "PointerEvent" in window
+    }, null, 2);
+
+    buildScene();
+    resize();
+    addEventListener("resize", resize);
+    if ("ink" in navigator) navigator.ink.requestPresenter({ presentationArea: canvas }).then(value => inkPresenter = value);
+    if (new URLSearchParams(location.search).get("autorun") === "1") run();
+  </script>
+</body>
+</html>

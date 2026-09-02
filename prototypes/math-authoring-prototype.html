@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eulearn math authoring prototype</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: var(--cp-bg); color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    button, input, select {
+      min-height: 36px; border: 1px solid var(--cp-border); border-radius: 0.625rem;
+      background: var(--cp-surface); color: var(--cp-text); font: inherit;
+    }
+    button { cursor: pointer; padding: 6px 10px; }
+    button:hover { background: var(--cp-surface-soft); border-color: var(--cp-border-strong); }
+    button.active { background: var(--cp-accent); border-color: var(--cp-accent); color: var(--cp-accent-fg); }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid var(--cp-accent); outline-offset: 2px;
+    }
+    .app { display: grid; grid-template-rows: 62px 1fr; width: 100%; height: 100%; }
+    .ribbon {
+      display: flex; align-items: center; gap: 6px; padding: 7px 12px; overflow: hidden;
+      border-bottom: 1px solid var(--cp-border); background: var(--cp-bg-elevated);
+    }
+    .brand { font-size: 20px; font-weight: 800; margin-right: 8px; }
+    .board-name { font-weight: 600; margin-right: 8px; white-space: nowrap; }
+    .ribbon button span { display: block; font-size: 11px; }
+    .save { margin-left: auto; color: var(--cp-success); white-space: nowrap; font-size: 13px; }
+    .workspace { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+    .board {
+      position: absolute; inset: 0;
+      background-color: var(--cp-surface);
+      background-image:
+        linear-gradient(var(--cp-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--cp-border) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .lesson {
+      position: absolute; left: 7%; top: 10%; width: 55%; min-height: 74%;
+      border: 2px dashed var(--cp-border-strong); padding: 28px;
+    }
+    .lesson h1 { margin: 0 0 18px; font-size: 28px; }
+    .equation {
+      display: inline-block; padding: 12px 18px; border: 3px solid var(--cp-accent);
+      border-radius: 16px; background: var(--cp-panel-strong);
+      font: 30px Cambria, Georgia, serif;
+    }
+    .graph {
+      position: absolute; left: 38%; top: 38%; width: 280px; height: 220px;
+      border: 1px solid var(--cp-border); border-radius: 16px; background: var(--cp-panel-strong);
+      box-shadow: 0 0 2px var(--cp-border), 0 1px 2px var(--cp-border);
+    }
+    .axis-x, .axis-y, .curve { position: absolute; background: var(--cp-border-strong); }
+    .axis-x { left: 12px; right: 12px; top: 50%; height: 1px; }
+    .axis-y { top: 12px; bottom: 12px; left: 50%; width: 1px; }
+    .curve { left: 32px; right: 32px; top: 48%; height: 4px; background: var(--cp-accent); transform: rotate(-19deg); }
+    .geometry {
+      position: absolute; left: 12%; top: 62%; width: 170px; height: 120px;
+      border-left: 5px solid var(--cp-accent); border-bottom: 5px solid var(--cp-accent);
+      transform: skewX(-28deg);
+    }
+    .geometry-label { position: absolute; left: 11%; top: 80%; font-weight: 700; }
+    .panel {
+      position: absolute; z-index: 10; background: var(--cp-panel-strong);
+      border: 2px solid var(--cp-accent); box-shadow: var(--cp-shadow);
+    }
+    .panel h2 { margin: 0; font-size: 15px; }
+    .panel small { color: var(--cp-text-muted); }
+    .field { display: grid; gap: 5px; margin-top: 12px; }
+    .field label { color: var(--cp-text-muted); font-size: 12px; }
+    .field input, .field select { width: 100%; padding: 7px 9px; }
+    .symbols { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 12px; }
+    .symbols button { font: 18px Cambria, Georgia, serif; padding: 4px; }
+    .tabs { display: flex; gap: 4px; margin: 10px 0; }
+    .tabs button { flex: 1; }
+    .action { width: 100%; margin-top: 12px; background: var(--cp-accent); color: var(--cp-accent-fg); border-color: var(--cp-accent); }
+    .inline-editor {
+      left: 7%; top: 28%; width: 460px; padding: 14px; border-radius: 16px;
+    }
+    .inline-editor::before {
+      content: ""; position: absolute; left: 32px; top: -11px; width: 18px; height: 18px;
+      background: var(--cp-panel-strong); border-left: 2px solid var(--cp-accent);
+      border-top: 2px solid var(--cp-accent); transform: rotate(45deg);
+    }
+    .palette {
+      left: 50%; top: 14%; transform: translateX(-50%); width: 640px;
+      padding: 16px; border-radius: 16px;
+    }
+    .palette-input { width: 100%; padding: 12px; font-size: 17px; }
+    .results { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+    .result { padding: 12px; border: 1px solid var(--cp-border); border-radius: 0.625rem; }
+    .result strong { display: block; }
+    .result small { display: block; margin-top: 4px; }
+    .studio {
+      right: 0; top: 0; bottom: 0; width: 360px; padding: 18px; border-width: 0 0 0 3px;
+    }
+    .studio .preview {
+      min-height: 90px; margin-top: 12px; padding: 16px; display: grid; place-items: center;
+      border: 1px solid var(--cp-border); border-radius: 16px; font: 25px Cambria, Georgia, serif;
+      background: var(--cp-surface-soft);
+    }
+    .state {
+      position: fixed; z-index: 30; right: 12px; bottom: 76px; width: 270px; max-height: 190px;
+      overflow: auto; padding: 10px; border: 1px solid var(--cp-border); border-radius: 16px;
+      background: var(--cp-panel-strong); box-shadow: var(--cp-shadow);
+    }
+    .state pre { margin: 0; white-space: pre-wrap; font: 10px/1.4 Consolas, "Courier New", Courier, monospace; color: var(--cp-text-muted); }
+    .switcher {
+      position: fixed; z-index: 40; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px; padding: 8px; border: 2px solid var(--cp-border-strong);
+      border-radius: 0.625rem; background: var(--cp-panel-strong); box-shadow: var(--cp-shadow);
+    }
+    .switcher strong { min-width: 250px; text-align: center; }
+    .prototype-note {
+      position: fixed; z-index: 40; left: 12px; bottom: 14px; max-width: 340px; padding: 8px 12px;
+      border: 1px solid var(--cp-warning); border-radius: 0.625rem;
+      background: var(--cp-panel-strong); color: var(--cp-text-muted); font-size: 12px;
+    }
+    @media (max-width: 1000px) {
+      .state { display: none; }
+      .studio { width: 320px; }
+      .ribbon button:nth-of-type(n+7) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Throwaway prototype: three math-authoring UI variants, switchable via ?variant=. -->
+  <div id="root"></div>
+  <script>
+    const variants = {
+      A: "Direct on-canvas editor",
+      B: "Keyboard-first command palette",
+      C: "Structured authoring studio"
+    };
+    const state = {
+      variant: "A",
+      objectType: "Math",
+      expression: String.raw`\frac{-b\pm\sqrt{b^2-4ac}}{2a}`,
+      graphMode: "Cartesian",
+      geometryTool: "Triangle",
+      aid: "Number line",
+      lastAction: "Opened prototype"
+    };
+    const objectTypes = [["Math", "∑"], ["Graph", "⌁"], ["Geometry", "△"], ["Number line", "↔"], ["Table", "▦"], ["Grid region", "⌗"]];
+
+    function ribbon() {
+      return `<header class="ribbon">
+        <div class="brand">eulearn</div><div class="board-name">Calculus · Related rates</div>
+        <button>✎<span>Pen</span></button><button>↖<span>Select</span></button><button>T<span>Text</span></button>
+        ${objectTypes.map(([name, icon]) => `<button class="${state.objectType === name ? "active" : ""}" data-type="${name}">${icon}<span>${name}</span></button>`).join("")}
+        <div class="save">● Saved</div>
+      </header>`;
+    }
+    function board(extra) {
+      return `<main class="workspace"><div class="board">
+        <section class="lesson">
+          <h1>Quadratic formula and its graph</h1>
+          <div class="equation" data-select="Math">x = (−b ± √(b² − 4ac)) / 2a</div>
+          <div class="graph" data-select="Graph"><div class="axis-x"></div><div class="axis-y"></div><div class="curve"></div></div>
+          <div class="geometry" data-select="Geometry"></div><div class="geometry-label">Measured triangle · 35°</div>
+        </section>${extra}
+      </div></main>`;
+    }
+    function tabs() {
+      return `<div class="tabs">${objectTypes.slice(0, 3).map(([name]) => `<button class="${state.objectType === name ? "active" : ""}" data-type="${name}">${name}</button>`).join("")}</div>`;
+    }
+    function fields() {
+      if (state.objectType === "Graph") return `
+        <div class="field"><label>Coordinate mode</label><select id="mode"><option>Cartesian</option><option>Polar</option><option>Parametric</option></select></div>
+        <div class="field"><label>Expression</label><input value="y = x² - 4"></div>
+        <div class="field"><label>Exploration</label><select><option>Trace + key points</option><option>Value table</option><option>Parameter slider</option></select></div>`;
+      if (state.objectType === "Geometry") return `
+        <div class="field"><label>Construction</label><select><option>Measured triangle</option><option>Angle</option><option>Circle + radius</option></select></div>
+        <div class="field"><label>Constraint</label><select><option>Snap + live measurements</option><option>Free placement</option></select></div>`;
+      return `<div class="field"><label>LaTeX-style input</label><input id="expression" value="${state.expression.replaceAll('"', "&quot;")}"></div>
+        <div class="symbols">${["½","x²","√","π","θ","≤","∑","∏","lim","d/dx","∂","∫"].map(x => `<button data-symbol="${x}">${x}</button>`).join("")}</div>`;
+    }
+    function variantA() {
+      const editor = `<section class="panel inline-editor">
+        <h2>Editing ${state.objectType} directly on the Board</h2><small>Double-click an object or choose a ribbon tool, then click the Board.</small>
+        ${tabs()}${fields()}<button class="action" data-action="apply">Apply and return to previous tool</button>
+      </section>`;
+      return `<div class="app">${ribbon()}${board(editor)}</div>`;
+    }
+    function variantB() {
+      const palette = `<section class="panel palette">
+        <h2>Insert or edit math content</h2><small>Keyboard-first: Ctrl+K opens this palette; type a command or expression.</small>
+        <input class="palette-input" value="/math ${state.expression}" aria-label="Command or expression">
+        <div class="results">
+          <div class="result"><strong>∑ Insert Math</strong><small>Visual editor or LaTeX · Enter</small></div>
+          <div class="result"><strong>⌁ Insert Graph</strong><small>Cartesian, polar, parametric · G</small></div>
+          <div class="result"><strong>△ Construct Geometry</strong><small>Measured and constrained · M</small></div>
+          <div class="result"><strong>▦ Insert teaching aid</strong><small>Number line, table, coordinate plane · A</small></div>
+        </div>
+      </section>`;
+      return `<div class="app">${ribbon()}${board(palette)}</div>`;
+    }
+    function variantC() {
+      const studio = `<aside class="panel studio">
+        <h2>${state.objectType} authoring studio</h2><small>Persistent structure and preview; click another Board object to retarget.</small>
+        ${tabs()}${fields()}
+        <div class="preview">${state.objectType === "Math" ? "x = (−b ± √(b² − 4ac)) / 2a" : state.objectType === "Graph" ? "Graph preview · y = x² − 4" : "△ 35° · measured"}</div>
+        <button class="action" data-action="apply">Update selected object</button>
+      </aside>`;
+      return `<div class="app">${ribbon()}${board(studio)}</div>`;
+    }
+    function escapeHtml(text) {
+      return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    }
+    function render() {
+      const requested = new URLSearchParams(location.search).get("variant");
+      if (variants[requested]) state.variant = requested;
+      const content = state.variant === "A" ? variantA() : state.variant === "B" ? variantB() : variantC();
+      document.getElementById("root").innerHTML = content + `
+        <aside class="state"><pre>${escapeHtml(JSON.stringify(state, null, 2))}</pre></aside>
+        <div class="prototype-note"><strong>Throwaway prototype.</strong> Compare where authoring happens, then click Math, Graph, or Geometry to inspect each flow.</div>
+        <nav class="switcher"><button data-cycle="-1">←</button><strong>${state.variant} · ${variants[state.variant]}</strong><button data-cycle="1">→</button></nav>`;
+      bind();
+    }
+    function cycle(delta) {
+      const keys = Object.keys(variants);
+      state.variant = keys[(keys.indexOf(state.variant) + delta + keys.length) % keys.length];
+      const url = new URL(location.href); url.searchParams.set("variant", state.variant); history.replaceState({}, "", url);
+      state.lastAction = `Switched to ${state.variant}`; render();
+    }
+    function bind() {
+      document.querySelectorAll("[data-cycle]").forEach(el => el.onclick = () => cycle(Number(el.dataset.cycle)));
+      document.querySelectorAll("[data-type]").forEach(el => el.onclick = () => {
+        state.objectType = el.dataset.type; state.lastAction = `Editing ${state.objectType}`; render();
+      });
+      document.querySelectorAll("[data-select]").forEach(el => el.onclick = () => {
+        state.objectType = el.dataset.select; state.lastAction = `Selected existing ${state.objectType}`; render();
+      });
+      document.querySelectorAll("[data-symbol]").forEach(el => el.onclick = () => {
+        state.expression += ` ${el.dataset.symbol}`; state.lastAction = `Inserted ${el.dataset.symbol}`; render();
+      });
+      document.querySelectorAll("[data-action='apply']").forEach(el => el.onclick = () => {
+        state.lastAction = `Applied ${state.objectType} changes and returned to Pen`; render();
+      });
+    }
+    window.addEventListener("keydown", event => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
+      if (event.key === "ArrowLeft") cycle(-1);
+      if (event.key === "ArrowRight") cycle(1);
+    });
+    render();
+  </script>
+</body>
+</html>
